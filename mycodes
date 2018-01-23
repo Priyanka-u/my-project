@@ -1,0 +1,571 @@
+1 a) Is the number of petitions with Data Engineer job title increasing over time?
+
+
+
+import java.io.IOException;
+
+import javax.imageio.IIOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Mapper.Context;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class mypro1a
+{
+public static class MapClass extends Mapper<LongWritable,Text,Text,Text>
+{
+   public void map(LongWritable key, Text value, Context context)
+   {             
+      try{
+         String[] str = value.toString().split("\t");     
+         if(str[4].equals("DATA ENGINEER"))
+         {
+             context.write(new Text(str[7]),new Text (str[4]));
+         }
+     
+      }
+      catch(Exception e)
+      {
+         System.out.println(e.getMessage());
+      }
+     
+   }
+}
+public static class ReduceClass extends Reducer<Text,Text,Text,IntWritable>
+{
+       public void reduce(Text key, Iterable<Text> values,Context context) throws InterruptedException, IOException {
+           int sum=0;
+          
+            for (Text val : values)
+          {      
+                sum++;
+                     
+          }
+                                                      
+     
+     context.write(key,new IntWritable(sum));
+      
+      
+     }
+}
+
+public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "growth");
+    job.setJarByClass(mypro1a.class);
+    job.setMapperClass(MapClass.class);
+    job.setReducerClass(ReduceClass.class);
+    job.setNumReduceTasks(1);
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(Text.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}
+
+
+	
+1(b)Find top 5 job titles who are having highest avg growth in applications
+
+data = LOAD'/home/hduser/Downloads/myproject/h1b_final/*' USING PigStorage('\t') as
+(s_no:int,case_status:chararray,employer_name:chararray,soc_name:chararray,job_title:chararray,full_time_position:chararray,prevailing_wage:int,
+year:chararray,worksite:chararray,longitute:double,latitute:double);
+
+filtered = filter data BY year == '2011';
+grouped = GROUP filtered BY job_title;
+step_1 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+   
+filtered = filter data BY year == '2012';
+grouped = GROUP filtered BY job_title;
+step_2 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+
+filtered = filter data BY year == '2013';
+grouped = GROUP filtered BY job_title;
+step_3 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+
+filtered = filter data BY year == '2014';
+grouped = GROUP filtered BY job_title;
+step_4 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+
+filtered = filter data BY year == '2015';
+grouped = GROUP filtered BY job_title;
+step_5 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+
+filtered = filter data BY year == '2016';
+grouped = GROUP filtered BY job_title;
+step_6 = FOREACH grouped GENERATE group ,COUNT(filtered.case_status) AS case_count;
+
+joined= join step_1 by $0,step_2 by $0,step_3 by $0,step_4 by $0,step_5 by $0,step_6 by $0;
+yearwiseapplications= foreach joined generate $0,$1,$3,$5,$7,$9,$11;
+
+
+progressivegrowth= foreach yearwiseapplications  generate $0,
+(float)($6-$5)*100/$5,(float)($5-$4)*100/$4,
+(float)($4-$3)*100/$3,(float)($3-$2)*100/$2,
+(float)($2-$1)*100/$1;
+
+
+avgprogressivegrowth= foreach progressivegrowth generate $0,($1+$2+$3+$4+$5)/5;
+orderedavggrowth= order avgprogressivegrowth by $1 desc;
+answer = limit orderedavggrowth  5;
+dump answer;
+store answer into '/home/hduser/Downloads/myproject/project 1/1bans'; 
+
+
+
+
+
+2 a) Which part of the US has the most Data Engineer jobs for each year?
+
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.mapreduce.Reducer.Context;
+import org.apache.hadoop.mapreduce.lib.input.*;
+import org.apache.hadoop.mapreduce.lib.output.*;
+
+
+public class myproject2a
+  {
+	public static class MapClass extends Mapper<LongWritable,Text,Text,Text>
+     {
+      public void map(LongWritable key, Text value, Context context)
+        {	    	  
+	         try
+	          {
+	            String[] str = value.toString().split("\t");	 
+	                
+	            if(str[1].contains("CERTIFIED") && str[4].contains("DATA ENGINEER"))
+	            {  	String str1= str[4]+","+str[7];	            	
+	            
+	            context.write(new Text(str[8]),new Text (str1));
+	            }
+	         
+	         }
+	         catch(Exception e)
+	         {
+	            System.out.println(e.getMessage());
+	         }
+	         
+	      }
+	   }
+   
+
+public static class ReduceClass extends Reducer<Text,Text,Text,IntWritable>
+{
+	  	public void reduce(Text key, Iterable<Text> values,Context context) throws IOException, InterruptedException {
+	      	int sum=0;
+	      	
+	      	 for (Text val : values)
+	         {       
+	      		 sum++;
+	      		   	
+	         }
+	         		         		      		      
+	     
+		context.write(key,new IntWritable(count));
+	      
+	    }
+}
+
+public static void main(String[] args) throws Exception {
+	    Configuration conf = new Configuration();
+	    Job job = Job.getInstance(conf, "count");
+	    job.setJarByClass(myproject2a.class);
+	    job.setMapperClass(MapClass.class);
+	    job.setReducerClass(ReduceClass.class);
+	    job.setNumReduceTasks(1);
+	    job.setMapOutputKeyClass(Text.class);
+	    job.setMapOutputValueClass(Text.class);
+	    job.setOutputKeyClass(Text.class);
+	    job.setOutputValueClass(IntWritable.class);
+	    FileInputFormat.addInputPath(job, new Path(args[0]));
+	    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+	    System.exit(job.waitForCompletion(true) ? 0 : 1);
+	  }
+}
+
+2(b)find top 5 locations in the US who have got certified visa for each year.
+
+
+import java.io.*;
+import java.util.TreeMap;
+
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.mapreduce.lib.input.*;
+import org.apache.hadoop.mapreduce.lib.output.*;
+
+
+
+public class mypro2b {
+	
+	public static class MapClass extends Mapper<LongWritable,Text,Text,Text>
+	   {
+	      public void map(LongWritable key, Text value, Context context)
+	      {	    	  
+	         try{
+	        	 
+	            String[] str = value.toString().split("\t");	
+	            
+	          
+	            
+	            if(str[1].equals("CERTIFIED"))
+	            {
+	      
+	            	String a = str[1]+"\t"+str[7];
+	            	context.write(new Text(str[8]),new Text(a));
+	            }
+	            
+	            
+	         }
+	         catch(Exception e)
+	         {
+	            System.out.println(e.getMessage());
+	         }
+	      }	
+	   }
+
+	public static class yearPartitioner extends Partitioner<Text,Text>
+	   {
+
+		public int getPartition(Text key, Text values, int numReduceTasks) {
+			
+			//String b[]="";
+			long c=0;
+			   			          	
+	        	String[] b=values.toString().split("\t");
+	        	 c = Long.parseLong(b[1]);
+	        	if(c==2011)
+	        	{
+	        		return 0;
+	        	}
+	        	else if(c==2012)
+	        	{
+	        		return 1;
+	        	}
+	        	else if(c==2013)
+	        	{
+	        		return 2;
+	        	} 
+	        	else if(c==2014)
+	        	{
+	        		return 3;
+	        	}
+	        	else if(c==2015)
+	        	{
+	        		return 4;
+	        	}
+	   
+	        	else
+	        	{
+	        		return 5;	
+	        	}
+	        		
+	         }
+	   }
+	
+	public static class ReduceClass extends Reducer<Text,Text,NullWritable,Text>
+	   {
+		   // private LongWritable result = new LongWritable();
+		    
+		 public TreeMap<Long, Text> tm = new TreeMap<Long, Text>();
+	  		public void reduce (Text key, Iterable<Text> values, Context con) throws IOException, InterruptedException
+	  		{
+	  			long count=0;
+	  			//String year="";
+	  			//String job="";
+	  			String myVal="";
+	  			for(Text val:values)
+	  			{
+	  				String[] str = val.toString().split("\t");
+	  				
+	  					count++;
+	  					myVal = str[1]+"\t"+key;
+	  				
+	  				
+	  			}
+	  			String myValue1 = myVal+"\t"+count;
+	  			tm.put(new Long(count), new Text(myValue1));
+	  			if(tm.size()>5)
+	  			{
+	  				tm.remove(tm.firstKey());
+	  			}
+	  		}
+	  		public void cleanup(Context con) throws IOException, InterruptedException
+			{
+				for(Text t:tm.descendingMap().values())
+				{
+					con.write(NullWritable.get(), t);
+				}
+			}
+		
+		  
+	   }
+
+
+public static void main(String[] args) throws Exception {
+ Configuration conf = new Configuration();
+ //conf.set("name", "value");
+ //conf.set("mapreduce.input.fileinputformat.split.minsize", "134217728");
+ Job job = Job.getInstance(conf, "job Count");
+ job.setJarByClass(mypro2b.class);
+ job.setMapperClass(MapClass.class);
+ job.setPartitionerClass(yearPartitioner.class);
+ //job.setCombinerClass(ReduceClass.class);
+ job.setReducerClass(ReduceClass.class);
+ job.setNumReduceTasks(6);
+ job.setMapOutputKeyClass(Text.class);
+ job.setMapOutputValueClass(Text.class);
+ job.setOutputKeyClass(NullWritable.class);
+ job.setOutputValueClass(Text.class);
+ FileInputFormat.addInputPath(job, new Path(args[0]));
+ FileOutputFormat.setOutputPath(job, new Path(args[1]));
+ System.exit(job.waitForCompletion(true) ? 0 : 1);
+}
+	
+}
+3) Which industry(SOC_NAME) has the most number of Data Scientist positions?
+		
+		
+		
+select soc_name , count(employer_name) as max, job_title  from h1b_final where job_title = 'DATA SCIENTIST' and case_status = 'CERTIFIED' group by soc_name,job_title order by max desc limit 1;
+
+
+
+4) Which top 5 employers file the most petitions each year? - Case Status - ALL
+
+select employer_name,count (case_status) as max from h1b_final where year = '2011' group by employer_name order by max desc limit 5;
+select employer_name,count (case_status) as max from h1b_final where year = '2012' group by employer_name order by max desc limit 5;
+select employer_name,count (case_status) as max from h1b_final where year = '2013' group by employer_name order by max desc limit 5;
+select employer_name,count (case_status) as max from h1b_final where year = '2014' group by employer_name order by max desc limit 5;
+select employer_name,count (case_status) as max from h1b_final where year = '2015' group by employer_name order by max desc limit 5;
+select employer_name,count (case_status) as max from h1b_final where year = '2016' group by employer_name order by max desc limit 5;
+
+
+	 
+
+5) Find the most popular top 10 job positions for H1B visa applications for each year?
+a) for all the applications
+b) for only certified applications
+
+select job_title,year,count(case_status ) as max from h1b_final where year = 2011 group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2012 group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2013 group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2014 group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2015 group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2016 group by job_title,year  order by max desc limit 10; 
+
+select job_title,year,count(case_status ) as max from h1b_final where year = 2011 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2012 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2013 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2014 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2015 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+select job_title,year,count(case_status ) as max from h1b_final where year = 2016 and case_status='CERTIFIED' group by job_title,year  order by max desc limit 10; 
+
+
+6) Find the percentage and the count of each case status on total applications for each year. Create a line graph depicting the pattern of All the cases over the period of time
+
+h1b_final = load '/user/hive/warehouse/h1b_final/*' using PigStorage('\t') as (sno:int, case_status:chararray, emp_name:chararray, soc_name:chararray, job_title:chararray, full_time_pos:chararray, wage:long, year:chararray, worksite:chararray, longitude:double, lattitude:double);
+year_grp = group h1b_final by $7;
+total = foreach year_grp generate group, (float)COUNT(h1b_final.$1) as tot;
+--dump total;
+grp = group h1b_final by ($7,$1);
+case_total = foreach grp generate flatten(group), (float)COUNT(h1b_final.$1) as per;
+--dump case_total;
+join_grp = join total by $0,case_total by $0;
+--dump join_grp;
+final = foreach join_grp generate $0,$3,$4,ROUND_TO(($4/$1)*100,2);
+dump final;
+--store final into '/home/hduser/Documents/project pig querries/project6';
+
+  
+7) Create a bar graph to depict the number of applications for each year
+
+
+
+import java.io.*;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.mapreduce.lib.input.*;
+import org.apache.hadoop.mapreduce.lib.output.*;
+
+
+public class mypro7 {
+	
+	public static class MapClass extends Mapper<LongWritable,Text,Text,Text>
+	   {
+	      public void map(LongWritable key, Text value, Context context)
+	      {	    	  
+	         try{
+	            String[] str = value.toString().split("\t");	 
+	    
+	            	context.write(new Text(str[7]),new Text (str[1]));
+	       
+	         
+	         }
+	         catch(Exception e)
+	         {
+	            System.out.println(e.getMessage());
+	         }
+	         
+	      }
+	   }
+	
+	  public static class ReduceClass extends Reducer<Text,Text,Text,IntWritable>
+	   {
+		  	public void reduce(Text key, Iterable<Text> values,Context context) throws IOException, InterruptedException {
+		      	int count=0;
+		      	
+		      	 for (Text val : values)
+		         {       
+		      		{ count++;
+		      		}   	
+		         }
+		         		         		      		      
+		     
+			context.write(key,new IntWritable(count));
+		      //context.write(key, new LongWritable(sum));
+		      
+		    }
+	   }
+	  public static void main(String[] args) throws Exception {
+		    Configuration conf = new Configuration();
+		    //conf.set("name", "value")
+		    //conf.set("mapreduce.input.fileinputformat.split.minsize", "134217728");
+		    Job job = Job.getInstance(conf, "application count");
+		    job.setJarByClass(mypro7.class);
+		    job.setMapperClass(MapClass.class);
+		    job.setReducerClass(ReduceClass.class);
+		    job.setNumReduceTasks(1);
+		    job.setMapOutputKeyClass(Text.class);
+		    job.setMapOutputValueClass(Text.class);
+		    job.setOutputKeyClass(Text.class);
+		    job.setOutputValueClass(IntWritable.class);
+		    FileInputFormat.addInputPath(job, new Path(args[0]));
+		    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		    System.exit(job.waitForCompletion(true) ? 0 : 1);
+		  }
+}
+
+
+
+
+8) Find the average Prevailing Wage for each Job for each Year (take part time and full time separate). Arrange the output in descending order
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2011' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2011' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2012' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2012' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2013' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2013' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2014' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2014' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2015' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2015' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='Y' and year='2016' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+select job_title,full_time_position,year,avg(prevailing_wage) as avg from h1b_final where full_time_position ='N' and year='2016' and case_status in ('CERTIFIED', 'CERTIFIED-WITHDRAWN') group by job_title,full_time_position,year order by avg desc;
+
+9) Which are the employers along with the number of petitions who have the success rate more than 70%  in petitions. (total petitions filed more than 1000) ?
+
+pro9 = LOAD'/home/hduser/Downloads/myproject/h1b_final/*' USING PigStorage('\t') as
+(s_no:int,case_status:chararray,employer_name:chararray,soc_name:chararray,job_title:chararray,full_time_position:chararray,prevailing_wage:int,
+year:chararray,worksite:chararray,longitute:double,latitute:double);
+
+
+temp= group pro9 by $2;
+abc= foreach temp generate $0,(float)COUNT(pro9.$1);
+--//dump abc;
+
+cer= filter pro9 by $1 == 'CERTIFIED' or $1 == 'CERTIFIED-WITHDRAWN';
+def= group cer by $2;
+total= foreach def generate $0,(float)COUNT(cer.$1);
+--//dump total;
+
+joined= join total by $0,abc by $0;
+--dump joined;
+fo = foreach joined generate $0,$1,$3;
+--dump fo;
+out1= foreach fo generate $0,$2,($1/$2)*100;
+--dump out1;
+out2= filter out1 by $2>70.0;
+--dump out2;
+gfd = filter out1 by $1>=1000;
+oo = order gfd by $2 desc;
+dump oo;
+store oo into '/home/hduser/Downloads/9ans'; 
+
+
+
+10) Export result for question no 10 to MySql database.
+
+
+
+pro10 = LOAD'/home/hduser/Downloads/myproject/h1b_final/*' USING PigStorage('\t') as
+(s_no:int,case_status:chararray,employer_name:chararray,soc_name:chararray,job_title:chararray,full_time_position:chararray,prevailing_wage:int,
+year:chararray,worksite:chararray,longitute:double,latitute:double);
+
+
+temp= group pro10 by $4;
+abc= foreach temp generate $0,(float)COUNT(pro10.$1);
+--dump abc;
+
+cer= filter pro10 by $1 == 'CERTIFIED' or $1 == 'CERTIFIED-WITHDRAWN';
+def= group cer by $4;
+total= foreach def generate $0,(float)COUNT(cer.$1);
+--dump total;
+
+joined= join total by $0,abc by $0;
+--dump joined;
+fo = foreach joined generate $0,$1,$3;
+--dump fo;
+out1= foreach fo generate $0,$2,($1/$2)*100;
+--dump out1;
+out2= filter out1 by $2>70.0;
+--dump out2;
+gfd = filter out1 by $1>=1000;
+oo = order gfd by $2 desc;
+dump oo;
+store oo into '/home/hduser/Downloads/10ans'; 
+
+
+11) Export result for question no 10 to MySql database.
+#Create a Database in mysql and create a table in it
+sqoop export --connect jdbc:mysql://localhost/q11 --username root --password '1' --table qsn11 --update-mode  allowinsert --update-key job --export-dir /myproject/10ans --input-fields-terminated-by '\t' ;
+
+create database q11;
+
+CREATE TABLE qsn11(job VARCHAR(100) NOT NULL , total DOUBLE NOT NULL, perc DOUBLE NOT NULL, PRIMARY KEY(job));
+
+suggestions:
